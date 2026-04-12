@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>通勤ナビ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root {
+    --bg: #f2f2f7;
+    --card: #ffffff;
+    --subcard: #fafafa;
+    --text: #111827;
+    --subtext: #6b7280;
+    --line: #e5e7eb;
+
+    --blue-strong: #bfdbfe;
+    --blue-light: #e0f2fe;
+
+    --yellow-strong: #fde68a;
+    --yellow-light: #fef3c7;
+
+    --orange-strong: #fdba74;
+    --orange-light: #ffedd5;
+
+    --green: #dcfce7;
+    --gray: #e5e7eb;
+
+    --total-30: #dbeafe;
+    --total-40: #fef3c7;
+    --total-50: #fed7aa;
+
+    --left-20: #dbeafe;
+    --left-10: #fef3c7;
+    --left-5: #fed7aa;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 12px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.header h2 {
+    margin: 8px 0 4px;
+    font-size: 20px;
+}
+
+.time {
+    font-size: 15px;
+    color: var(--subtext);
+}
+
+.group {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.group-top {
+    margin-bottom: 10px;
+}
+
+.tx-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
+.tx-sub {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--subtext);
+}
+
+.routes {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+}
+
+.card {
+    min-width: 255px;
+    background: var(--subcard);
+    border-radius: 14px;
+    padding: 12px;
+    border: 1px solid var(--line);
+}
+
+.route-time {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 8px;
+}
+
+.current-chip {
+    display: inline-block;
+    margin-top: 3px;
+    padding: 6px 9px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.crowd-blue-strong {
+    background: var(--blue-strong);
+    color: #1d4ed8;
+}
+
+.crowd-blue-light {
+    background: var(--blue-light);
+    color: #0369a1;
+}
+
+.crowd-yellow-strong {
+    background: var(--yellow-strong);
+    color: #a16207;
+}
+
+.crowd-yellow-light {
+    background: var(--yellow-light);
+    color: #b45309;
+}
+
+.crowd-orange-strong {
+    background: var(--orange-strong);
+    color: #9a3412;
+}
+
+.crowd-orange-light {
+    background: var(--orange-light);
+    color: #c2410c;
+}
+
+.crowd-empty {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.metric-row {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 12px;
+}
+
+.metric-chip {
+    flex: 1;
+    text-align: center;
+    border-radius: 12px;
+    padding: 8px 10px;
+}
+
+.metric-label {
+    font-size: 11px;
+    color: var(--subtext);
+    margin-bottom: 2px;
+    font-weight: 700;
+}
+
+.metric-value {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.transfer-good {
+    background: var(--green);
+    color: #166534;
+}
+
+.transfer-warn {
+    background: var(--yellow-light);
+    color: #92400e;
+}
+
+.total-30 {
+    background: var(--total-30);
+    color: #1d4ed8;
+}
+
+.total-40 {
+    background: var(--total-40);
+    color: #92400e;
+}
+
+.total-50 {
+    background: var(--total-50);
+    color: #9a3412;
+}
+
+.left-20 {
+    background: var(--left-20);
+    color: #1d4ed8;
+}
+
+.left-10 {
+    background: var(--left-10);
+    color: #92400e;
+}
+
+.left-5 {
+    background: var(--left-5);
+    color: #9a3412;
+}
+
+.left-normal {
+    background: var(--gray);
+    color: #374151;
+}
+
+.badge {
+    display: inline-block;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 999px;
+}
+
+.badge-first {
+    background: var(--blue-light);
+    color: #1d4ed8;
+}
+
+.badge-left {
+    font-size: 14px;
+    font-weight: 700;
+    padding: 6px 10px;
+}
+
+.section-title {
+    margin-top: 10px;
+    margin-bottom: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+}
+
+select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    margin-top: 6px;
+    background: white;
+    font-size: 13px;
+}
+
+button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    background: #111827;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.empty {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 18px;
+    text-align: center;
+    color: var(--subtext);
+}
+
+@media (max-width: 480px) {
+    .tx-title {
+        font-size: 26px;
+    }
+
+    .route-time {
+        font-size: 22px;
+    }
+
+    .card {
+        min-width: 235px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h2>🚃 通勤ナビ</h2>
+    <div class="time">現在: {{ now }}</div>
+</div>
+
+{% if groups %}
+    {% for g in groups %}
+    <div class="group">
+
+        <div class="group-top">
+            <div class="tx-title">{{ g["tx_dep"] }}</div>
+
+            <div class="tx-sub">
+                <span>{{ g["tx_type"] }}</span>
+
+                {% if g["tx_first"] %}
+                    <span class="badge badge-first">八潮始発</span>
+                {% endif %}
+
+                {% if g["minutes_left"] <= 5 %}
+                    <span class="badge badge-left left-5">あと{{ g["minutes_left"] }}分</span>
+                {% elif g["minutes_left"] <= 10 %}
+                    <span class="badge badge-left left-10">あと{{ g["minutes_left"] }}分</span>
+                {% elif g["minutes_left"] <= 20 %}
+                    <span class="badge badge-left left-20">あと{{ g["minutes_left"] }}分</span>
+                {% else %}
+                    <span class="badge badge-left left-normal">あと{{ g["minutes_left"] }}分</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="routes">
+            {% for r in g["routes"] %}
+            <div class="card">
+
+                <div class="metric-row">
+                    {% if r["乗換"] <= 2 %}
+                    <div class="metric-chip transfer-warn">
+                        <div class="metric-label">乗換</div>
+                        <div class="metric-value">{{ r["乗換"] }}分</div>
+                    </div>
+                    {% else %}
+                    <div class="metric-chip transfer-good">
+                        <div class="metric-label">乗換</div>
+                        <div class="metric-value">{{ r["乗換"] }}分</div>
+                    </div>
+                    {% endif %}
+
+                    {% if r["総時間"] < 40 %}
+                    <div class="metric-chip total-30">
+                        <div class="metric-label">所要</div>
+                        <div class="metric-value">{{ r["総時間"] }}分</div>
+                    </div>
+                    {% elif r["総時間"] < 50 %}
+                    <div class="metric-chip total-40">
+                        <div class="metric-label">所要</div>
+                        <div class="metric-value">{{ r["総時間"] }}分</div>
+                    </div>
+                    {% else %}
+                    <div class="metric-chip total-50">
+                        <div class="metric-label">所要</div>
+                        <div class="metric-value">{{ r["総時間"] }}分</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="route-time">
+                    {{ g["tx_dep"] }} → {{ r["tx_arr"] }}
+                </div>
+
+                {% if r["TX混雑"] %}
+                    <div class="current-chip {{ crowd_style_map.get(r['TX混雑'], 'crowd-empty') }}">
+                        TX: {{ r["TX混雑"] }}
+                    </div>
+                {% else %}
+                    <div class="current-chip crowd-empty">TX 未設定</div>
+                {% endif %}
+
+                <div class="route-time" style="margin-top: 12px;">
+                    {{ r["大江戸線発"] }} → {{ r["都庁前着"] }}
+                </div>
+
+                {% if r["大江戸線6号車混雑"] %}
+                    <div class="current-chip {{ crowd_style_map.get(r['大江戸線6号車混雑'], 'crowd-empty') }}">
+                        6号車: {{ r["大江戸線6号車混雑"] }}
+                    </div>
+                {% else %}
+                    <div class="current-chip crowd-empty">6号車 未設定</div>
+                {% endif %}
+
+                {% if r["大江戸線8号車混雑"] %}
+                    <div class="current-chip {{ crowd_style_map.get(r['大江戸線8号車混雑'], 'crowd-empty') }}">
+                        8号車: {{ r["大江戸線8号車混雑"] }}
+                    </div>
+                {% else %}
+                    <div class="current-chip crowd-empty">8号車 未設定</div>
+                {% endif %}
+
+                <form action="/save" method="post">
+                    <input type="hidden" name="tx_dep" value="{{ g['tx_dep'] }}">
+                    <input type="hidden" name="oedo_dep" value="{{ r['大江戸線発'] }}">
+
+                    <div class="section-title">TX混雑</div>
+                    <select name="tx_crowded">
+                        {% for o in crowd_options %}
+                        <option value="{{ o }}" {% if r["TX混雑"] == o %}selected{% endif %}>{{ o }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <div class="section-title">大江戸線 6号車</div>
+                    <select name="oedo6_crowded">
+                        {% for o in crowd_options %}
+                        <option value="{{ o }}" {% if r["大江戸線6号車混雑"] == o %}selected{% endif %}>{{ o }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <div class="section-title">大江戸線 8号車</div>
+                    <select name="oedo8_crowded">
+                        {% for o in crowd_options %}
+                        <option value="{{ o }}" {% if r["大江戸線8号車混雑"] == o %}selected{% endif %}>{{ o }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button type="submit">保存</button>
+                </form>
+
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty">候補がありません</div>
+{% endif %}
+
+</body>
+</html>
