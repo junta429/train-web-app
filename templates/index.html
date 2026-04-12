@@ -247,6 +247,29 @@ body {
     color: #374151;
 }
 
+.toggle-button {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: white;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.form-box {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+}
+
+.form-box.open {
+    display: block;
+}
+
 select {
     width: 100%;
     padding: 8px 10px;
@@ -257,7 +280,7 @@ select {
     font-size: 13px;
 }
 
-button {
+.save-button {
     width: 100%;
     margin-top: 10px;
     padding: 10px;
@@ -393,33 +416,43 @@ button {
                     <div class="current-chip crowd-empty">8号車 未設定</div>
                 {% endif %}
 
-                <form action="/save" method="post">
-                    <input type="hidden" name="tx_dep" value="{{ g['tx_dep'] }}">
-                    <input type="hidden" name="oedo_dep" value="{{ r['大江戸線発'] }}">
+                <button
+                    type="button"
+                    class="toggle-button"
+                    onclick="toggleForm('{{ r['form_id'] }}', this)"
+                >
+                    混雑を入力
+                </button>
 
-                    <div class="section-title">TX混雑</div>
-                    <select name="tx_crowded">
-                        {% for o in crowd_options %}
-                        <option value="{{ o }}" {% if r["TX混雑"] == o %}selected{% endif %}>{{ o }}</option>
-                        {% endfor %}
-                    </select>
+                <div id="{{ r['form_id'] }}" class="form-box">
+                    <form action="/save" method="post">
+                        <input type="hidden" name="tx_dep" value="{{ g['tx_dep'] }}">
+                        <input type="hidden" name="oedo_dep" value="{{ r['大江戸線発'] }}">
 
-                    <div class="section-title">大江戸線 6号車</div>
-                    <select name="oedo6_crowded">
-                        {% for o in crowd_options %}
-                        <option value="{{ o }}" {% if r["大江戸線6号車混雑"] == o %}selected{% endif %}>{{ o }}</option>
-                        {% endfor %}
-                    </select>
+                        <div class="section-title">TX混雑</div>
+                        <select name="tx_crowded">
+                            {% for o in crowd_options %}
+                            <option value="{{ o }}" {% if r["TX混雑"] == o %}selected{% endif %}>{{ o }}</option>
+                            {% endfor %}
+                        </select>
 
-                    <div class="section-title">大江戸線 8号車</div>
-                    <select name="oedo8_crowded">
-                        {% for o in crowd_options %}
-                        <option value="{{ o }}" {% if r["大江戸線8号車混雑"] == o %}selected{% endif %}>{{ o }}</option>
-                        {% endfor %}
-                    </select>
+                        <div class="section-title">大江戸線 6号車</div>
+                        <select name="oedo6_crowded">
+                            {% for o in crowd_options %}
+                            <option value="{{ o }}" {% if r["大江戸線6号車混雑"] == o %}selected{% endif %}>{{ o }}</option>
+                            {% endfor %}
+                        </select>
 
-                    <button type="submit">保存</button>
-                </form>
+                        <div class="section-title">大江戸線 8号車</div>
+                        <select name="oedo8_crowded">
+                            {% for o in crowd_options %}
+                            <option value="{{ o }}" {% if r["大江戸線8号車混雑"] == o %}selected{% endif %}>{{ o }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <button type="submit" class="save-button">保存</button>
+                    </form>
+                </div>
 
             </div>
             {% endfor %}
@@ -430,6 +463,24 @@ button {
 {% else %}
     <div class="empty">候補がありません</div>
 {% endif %}
+
+<script>
+function toggleForm(targetId, button) {
+    const allForms = document.querySelectorAll('.form-box');
+    const allButtons = document.querySelectorAll('.toggle-button');
+    const target = document.getElementById(targetId);
+
+    const isOpen = target.classList.contains('open');
+
+    allForms.forEach(form => form.classList.remove('open'));
+    allButtons.forEach(btn => btn.textContent = '混雑を入力');
+
+    if (!isOpen) {
+        target.classList.add('open');
+        button.textContent = '入力を閉じる';
+    }
+}
+</script>
 
 </body>
 </html>

@@ -202,6 +202,7 @@ def get_routes(now_dt):
                     "大江戸線6号車混雑": status["oedo6_crowded"],
                     "大江戸線8号車混雑": status["oedo8_crowded"],
                     "oedo_dep_dt": oe_dep_dt,
+                    "form_id": f"form-{tx_dep.replace(':', '')}-{oe_dep.replace(':', '')}",
                 })
 
         if not candidates:
