@@ -3,6 +3,7 @@ import json
 import os
 import sqlite3
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 
@@ -12,6 +13,7 @@ DB_FILE = os.path.join(BASE_DIR, "status.db")
 
 MIN_TRANSFER = 1
 MAX_WAIT = 10
+JST = ZoneInfo("Asia/Tokyo")
 
 CROWD_OPTIONS = [
     "余裕で座れる",
@@ -54,6 +56,13 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+
+# =========================
+# 現在時刻
+# =========================
+def now_jst() -> datetime:
+    return datetime.now(JST)
 
 
 # =========================
@@ -123,7 +132,7 @@ def save_status(tx_dep, oedo_dep, tx_crowded, oedo6_crowded, oedo8_crowded):
         tx_crowded,
         oedo6_crowded,
         oedo8_crowded,
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now_jst().strftime("%Y-%m-%d %H:%M:%S")
     ))
 
     conn.commit()
@@ -240,7 +249,7 @@ def save():
 # =========================
 @app.route("/")
 def index():
-    now_dt = datetime.now()
+    now_dt = now_jst()
     groups = get_routes(now_dt)
 
     return render_template(
