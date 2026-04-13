@@ -36,6 +36,10 @@
     --left-past: #e5e7eb;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
     background: var(--bg);
@@ -83,6 +87,10 @@ body {
     padding: 14px;
     margin-bottom: 14px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.group.focus {
+    outline: 2px solid #bfdbfe;
 }
 
 .group-top {
@@ -352,14 +360,18 @@ select {
 
 {% if groups %}
     {% for g in groups %}
-    <div class="group">
+    <div
+        id="{{ g['group_id'] }}"
+        class="group {% if g['focus_group'] %}focus{% endif %}"
+        {% if g['focus_group'] %}data-focus="true"{% endif %}
+    >
 
         <div class="group-top">
-            <div class="tx-title">{{ g["tx_arr"] }}</div>
+            <div class="tx-title">{{ g["tx_dep"] }} → {{ g["first_tocho_arr"] }}</div>
 
             <div class="tx-sub">
-                <span>新御徒町着</span>
                 <span>八潮 {{ g["tx_dep"] }}発</span>
+                <span>新御徒町 {{ g["tx_arr"] }}着</span>
                 <span>{{ g["tx_type"] }}</span>
 
                 {% if g["tx_first"] %}
@@ -511,6 +523,15 @@ function toggleForm(targetId, button) {
         button.textContent = '入力を閉じる';
     }
 }
+
+window.addEventListener('load', () => {
+    const focusGroup = document.querySelector('[data-focus="true"]');
+    if (focusGroup) {
+        setTimeout(() => {
+            focusGroup.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+    }
+});
 </script>
 
 </body>

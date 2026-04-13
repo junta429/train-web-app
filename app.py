@@ -60,7 +60,6 @@ def init_db():
     )
     """)
 
-    # 旧カラムがある場合の移行対応
     c.execute("PRAGMA table_info(route_status)")
     cols = [row[1] for row in c.fetchall()]
 
@@ -76,7 +75,6 @@ def init_db():
     if "updated_at" not in cols:
         c.execute("ALTER TABLE route_status ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''")
 
-    # 旧6号車列の値を7号車へ引き継ぐ
     if "oedo6_crowded" in cols:
         c.execute("""
         UPDATE route_status
@@ -99,7 +97,6 @@ def now_jst() -> datetime:
 
 # =========================
 # サービス日判定
-# 午後以降は翌朝の便を見たい想定
 # =========================
 def get_service_base_dt(now_dt: datetime) -> datetime:
     if now_dt.hour >= NEXT_DAY_SWITCH_HOUR:
@@ -153,7 +150,6 @@ def load_status_map():
             }
         return status_map
 
-    # 万一旧構造だけでも落ちないようにする
     c.execute("""
     SELECT tx_dep, oedo_dep, tx_crowded, oedo6_crowded, oedo8_crowded
     FROM route_status
@@ -247,7 +243,6 @@ def get_routes(now_dt):
             if MIN_TRANSFER <= transfer <= MAX_WAIT:
                 total = int((oe_arr_dt - tx_dep_dt).total_seconds() // 60)
 
-                # 到着後もしばらく表示を残す
                 visible_until = oe_arr_dt + timedelta(minutes=POST_ARRIVAL_DISPLAY_MINUTES)
                 if visible_until < now_dt:
                     continue
@@ -269,6 +264,7 @@ def get_routes(now_dt):
                     "大江戸線7号車混雑": status["oedo7_crowded"],
                     "大江戸線8号車混雑": status["oedo8_crowded"],
                     "oedo_dep_dt": oe_dep_dt,
+                    "oedo_arr_dt": oe_arr_dt,
                     "form_id": f"form-{tx_dep.replace(':', '')}-{oe_dep.replace(':', '')}",
                 })
 
@@ -284,17 +280,37 @@ def get_routes(now_dt):
 
         final.sort(key=lambda x: x["oedo_dep_dt"])
 
+        first_tocho_arr = final[0]["都庁前着"]
+        first_tocho_arr_dt = final[0]["oedo_arr_dt"]
+
         groups.append({
             "tx_dep": tx_dep,
             "tx_arr": tx_arr,
+            "first_tocho_arr": first_tocho_arr,
             "tx_type": tx_type,
             "tx_first": tx_first,
             "minutes_left": int((tx_dep_dt - now_dt).total_seconds() // 60),
             "routes": final,
             "sort_dt": tx_arr_dt,
+            "focus_dt": tx_dep_dt,
+            "group_id": f"group-{tx_dep.replace(':', '')}",
+            "first_tocho_arr_dt": first_tocho_arr_dt,
         })
 
     groups.sort(key=lambda x: x["sort_dt"])
+
+    # まだ出発していない一番近い列車を探す
+    focused = False
+    for g in groups:
+        g["focus_group"] = False
+        if not focused and g["focus_dt"] >= now_dt:
+            g["focus_group"] = True
+            focused = True
+
+    # もう全部出発済みなら、いちばん上を対象に
+    if groups and not focused:
+        groups[0]["focus_group"] = True
+
     return groups
 
 
