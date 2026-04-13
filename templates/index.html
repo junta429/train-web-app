@@ -33,6 +33,7 @@
     --left-20: #dbeafe;
     --left-10: #fef3c7;
     --left-5: #fed7aa;
+    --left-past: #e5e7eb;
 }
 
 body {
@@ -53,9 +54,27 @@ body {
     font-size: 20px;
 }
 
+.time-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .time {
     font-size: 15px;
     color: var(--subtext);
+}
+
+.refresh-button {
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #111827;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 700;
 }
 
 .group {
@@ -216,6 +235,11 @@ body {
     color: #9a3412;
 }
 
+.left-past {
+    background: var(--left-past);
+    color: #374151;
+}
+
 .left-normal {
     background: var(--gray);
     color: #374151;
@@ -320,7 +344,10 @@ select {
 
 <div class="header">
     <h2>🚃 通勤ナビ</h2>
-    <div class="time">現在: {{ now }}</div>
+    <div class="time-row">
+        <div class="time">現在: {{ now }}</div>
+        <button type="button" class="refresh-button" onclick="location.reload()">現在時刻更新</button>
+    </div>
 </div>
 
 {% if groups %}
@@ -328,16 +355,20 @@ select {
     <div class="group">
 
         <div class="group-top">
-            <div class="tx-title">{{ g["tx_dep"] }}</div>
+            <div class="tx-title">{{ g["tx_arr"] }}</div>
 
             <div class="tx-sub">
+                <span>新御徒町着</span>
+                <span>八潮 {{ g["tx_dep"] }}発</span>
                 <span>{{ g["tx_type"] }}</span>
 
                 {% if g["tx_first"] %}
                     <span class="badge badge-first">八潮始発</span>
                 {% endif %}
 
-                {% if g["minutes_left"] <= 5 %}
+                {% if g["minutes_left"] < 0 %}
+                    <span class="badge badge-left left-past">出発済み</span>
+                {% elif g["minutes_left"] <= 5 %}
                     <span class="badge badge-left left-5">あと{{ g["minutes_left"] }}分</span>
                 {% elif g["minutes_left"] <= 10 %}
                     <span class="badge badge-left left-10">あと{{ g["minutes_left"] }}分</span>
@@ -400,12 +431,12 @@ select {
                     {{ r["大江戸線発"] }} → {{ r["都庁前着"] }}
                 </div>
 
-                {% if r["大江戸線6号車混雑"] %}
-                    <div class="current-chip {{ crowd_style_map.get(r['大江戸線6号車混雑'], 'crowd-empty') }}">
-                        6号車: {{ r["大江戸線6号車混雑"] }}
+                {% if r["大江戸線7号車混雑"] %}
+                    <div class="current-chip {{ crowd_style_map.get(r['大江戸線7号車混雑'], 'crowd-empty') }}">
+                        7号車: {{ r["大江戸線7号車混雑"] }}
                     </div>
                 {% else %}
-                    <div class="current-chip crowd-empty">6号車 未設定</div>
+                    <div class="current-chip crowd-empty">7号車 未設定</div>
                 {% endif %}
 
                 {% if r["大江戸線8号車混雑"] %}
@@ -436,10 +467,10 @@ select {
                             {% endfor %}
                         </select>
 
-                        <div class="section-title">大江戸線 6号車</div>
-                        <select name="oedo6_crowded">
+                        <div class="section-title">大江戸線 7号車</div>
+                        <select name="oedo7_crowded">
                             {% for o in crowd_options %}
-                            <option value="{{ o }}" {% if r["大江戸線6号車混雑"] == o %}selected{% endif %}>{{ o }}</option>
+                            <option value="{{ o }}" {% if r["大江戸線7号車混雑"] == o %}selected{% endif %}>{{ o }}</option>
                             {% endfor %}
                         </select>
 
