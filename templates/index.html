@@ -493,21 +493,21 @@ select {
                         <div class="section-title">TX混雑</div>
                         <select name="tx_crowded">
                             {% for o in crowd_options %}
-                            <option value="{{ o }}" {% if r["TX混雑"] == o %}selected{% endif %}>{{ o }}</option>
+                            <option value="{{ o }}" {% if (r["TX混雑"] == o) or (o == "未設定" and not r["TX混雑"]) %}selected{% endif %}>{{ o }}</option>
                             {% endfor %}
                         </select>
 
                         <div class="section-title">大江戸線 7号車</div>
                         <select name="oedo7_crowded">
                             {% for o in crowd_options %}
-                            <option value="{{ o }}" {% if r["大江戸線7号車混雑"] == o %}selected{% endif %}>{{ o }}</option>
+                            <option value="{{ o }}" {% if (r["大江戸線7号車混雑"] == o) or (o == "未設定" and not r["大江戸線7号車混雑"]) %}selected{% endif %}>{{ o }}</option>
                             {% endfor %}
                         </select>
 
                         <div class="section-title">大江戸線 8号車</div>
                         <select name="oedo8_crowded">
                             {% for o in crowd_options %}
-                            <option value="{{ o }}" {% if r["大江戸線8号車混雑"] == o %}selected{% endif %}>{{ o }}</option>
+                            <option value="{{ o }}" {% if (r["大江戸線8号車混雑"] == o) or (o == "未設定" and not r["大江戸線8号車混雑"]) %}selected{% endif %}>{{ o }}</option>
                             {% endfor %}
                         </select>
 

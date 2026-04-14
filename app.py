@@ -19,6 +19,7 @@ POST_ARRIVAL_DISPLAY_MINUTES = 90
 TOP_ANCHOR_TIME = "05:03"
 
 CROWD_OPTIONS = [
+    "未設定",
     "余裕で座れる",
     "ギリギリ座れる",
     "ゆったり立てる",
@@ -113,6 +114,12 @@ def get_display_status(tx_dep_text: str, now_dt: datetime):
     return False, train_key - now_key
 
 
+def normalize_crowd_value(value: str) -> str:
+    if value in [None, "", "未設定"]:
+        return ""
+    return value
+
+
 def load_data():
     with open(JSON_FILE, encoding="utf-8") as f:
         data = json.load(f)
@@ -158,9 +165,9 @@ def save_status(tx_dep, oedo_dep, tx_crowded, oedo7_crowded, oedo8_crowded):
     """, (
         tx_dep,
         oedo_dep,
-        tx_crowded,
-        oedo7_crowded,
-        oedo8_crowded,
+        normalize_crowd_value(tx_crowded),
+        normalize_crowd_value(oedo7_crowded),
+        normalize_crowd_value(oedo8_crowded),
         now_jst().strftime("%Y-%m-%d %H:%M:%S")
     ))
 
@@ -338,7 +345,6 @@ def index():
     )
 
 
-# Render / gunicorn でも起動時にDB初期化
 init_db()
 
 if __name__ == "__main__":
