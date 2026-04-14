@@ -48,9 +48,27 @@ body {
     padding: 12px;
 }
 
+.floating-refresh {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+    border: 1px solid #d1d5db;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #111827;
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+}
+
 .header {
     text-align: center;
     margin-bottom: 16px;
+    padding-top: 6px;
 }
 
 .header h2 {
@@ -69,16 +87,6 @@ body {
 .time {
     font-size: 15px;
     color: var(--subtext);
-}
-
-.refresh-button {
-    border: 1px solid #d1d5db;
-    background: white;
-    color: #111827;
-    border-radius: 999px;
-    padding: 8px 12px;
-    font-size: 13px;
-    font-weight: 700;
 }
 
 .group {
@@ -333,6 +341,13 @@ select {
 }
 
 @media (max-width: 480px) {
+    .floating-refresh {
+        top: 10px;
+        right: 10px;
+        padding: 9px 12px;
+        font-size: 12px;
+    }
+
     .tx-title {
         font-size: 26px;
     }
@@ -350,11 +365,14 @@ select {
 
 <body>
 
+<button type="button" class="floating-refresh" onclick="location.reload()">
+    現在時刻更新
+</button>
+
 <div class="header">
     <h2>🚃 通勤ナビ</h2>
     <div class="time-row">
         <div class="time">現在: {{ now }}</div>
-        <button type="button" class="refresh-button" onclick="location.reload()">現在時刻更新</button>
     </div>
 </div>
 
