@@ -542,14 +542,10 @@ function toggleForm(targetId, button) {
     }
 }
 
-window.addEventListener('load', () => {
-    const focusGroup = document.querySelector('[data-focus="true"]');
-    if (focusGroup) {
-        setTimeout(() => {
-            focusGroup.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 150);
-    }
-});
+/*
+5:03発をページ最上部に固定したいので、
+以前入っていた focus_group への自動スクロールは削除
+*/
 </script>
 
 </body>

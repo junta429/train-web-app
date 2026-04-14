@@ -18,6 +18,9 @@ JST = ZoneInfo("Asia/Tokyo")
 # 都庁前到着後もしばらく入力できるように残す時間
 POST_ARRIVAL_DISPLAY_MINUTES = 90
 
+# 一番上の基準にしたい発車時刻
+TOP_ANCHOR_TIME = "05:03"
+
 CROWD_OPTIONS = [
     "余裕で座れる",
     "ギリギリ座れる",
@@ -99,6 +102,25 @@ def now_jst() -> datetime:
 def parse_time(text: str, base_dt: datetime) -> datetime:
     h, m = map(int, text.split(":"))
     return base_dt.replace(hour=h, minute=m, second=0, microsecond=0)
+
+
+def time_to_minutes(text: str) -> int:
+    h, m = map(int, text.split(":"))
+    return h * 60 + m
+
+
+def anchored_sort_key(text: str, anchor_text: str = TOP_ANCHOR_TIME) -> int:
+    """
+    05:03を先頭基準にして1日を並べるためのキー
+    例:
+    05:03 -> 0
+    05:10 -> 7
+    23:00 -> ...
+    00:10 -> 翌日側として後ろ
+    """
+    minutes = time_to_minutes(text)
+    anchor = time_to_minutes(anchor_text)
+    return (minutes - anchor) % (24 * 60)
 
 
 # =========================
@@ -209,7 +231,7 @@ def get_routes(now_dt: datetime):
 
         candidate_groups = []
 
-        # 今日の便
+        # 今日の便 / 翌日の便候補を見る
         for service_base in [today_base, tomorrow_base]:
             tx_dep_dt = parse_time(tx_dep, service_base)
             tx_arr_dt = parse_time(tx_arr, service_base)
@@ -308,9 +330,10 @@ def get_routes(now_dt: datetime):
             "first_tocho_arr_dt": first_tocho_arr_dt,
         })
 
-    groups.sort(key=lambda x: x["focus_dt"])
+    # 05:03発を常に先頭にした並びへ変更
+    groups.sort(key=lambda x: anchored_sort_key(x["tx_dep"], TOP_ANCHOR_TIME))
 
-    # まだ出発していない一番近い列車を探す
+    # まだ出発していない一番近い列車を探す（枠線表示用だけ）
     focused = False
     for g in groups:
         g["focus_group"] = False
@@ -318,7 +341,7 @@ def get_routes(now_dt: datetime):
             g["focus_group"] = True
             focused = True
 
-    # もう全部出発済みなら、いちばん上を対象に
+    # もう全部出発済みなら、並び順の先頭を対象に
     if groups and not focused:
         groups[0]["focus_group"] = True
 
