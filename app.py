@@ -15,9 +15,6 @@ MIN_TRANSFER = 1
 MAX_WAIT = 10
 JST = ZoneInfo("Asia/Tokyo")
 
-# 午後以降は「翌朝の時刻表」として扱う
-NEXT_DAY_SWITCH_HOUR = 12
-
 # 都庁前到着後もしばらく入力できるように残す時間
 POST_ARRIVAL_DISPLAY_MINUTES = 90
 
@@ -75,6 +72,7 @@ def init_db():
     if "updated_at" not in cols:
         c.execute("ALTER TABLE route_status ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''")
 
+    # 旧6号車列の値を7号車へ引き継ぐ
     if "oedo6_crowded" in cols:
         c.execute("""
         UPDATE route_status
@@ -93,17 +91,6 @@ def init_db():
 # =========================
 def now_jst() -> datetime:
     return datetime.now(JST)
-
-
-# =========================
-# サービス日判定
-# =========================
-def get_service_base_dt(now_dt: datetime) -> datetime:
-    if now_dt.hour >= NEXT_DAY_SWITCH_HOUR:
-        base = now_dt + timedelta(days=1)
-    else:
-        base = now_dt
-    return base.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 # =========================
@@ -150,6 +137,7 @@ def load_status_map():
             }
         return status_map
 
+    # 旧構造でも落ちないようにする
     c.execute("""
     SELECT tx_dep, oedo_dep, tx_crowded, oedo6_crowded, oedo8_crowded
     FROM route_status
@@ -201,12 +189,14 @@ def save_status(tx_dep, oedo_dep, tx_crowded, oedo7_crowded, oedo8_crowded):
 # =========================
 # ルート取得
 # =========================
-def get_routes(now_dt):
+def get_routes(now_dt: datetime):
     tx_list, oedo_list = load_data()
     status_map = load_status_map()
-    base_dt = get_service_base_dt(now_dt)
 
     groups = []
+
+    today_base = now_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow_base = today_base + timedelta(days=1)
 
     for tx in tx_list:
         tx_dep = tx["八潮発"]
@@ -217,87 +207,108 @@ def get_routes(now_dt):
         if tx_arr is None:
             continue
 
-        tx_dep_dt = parse_time(tx_dep, base_dt)
-        tx_arr_dt = parse_time(tx_arr, base_dt)
+        candidate_groups = []
 
-        if tx_arr_dt < tx_dep_dt:
-            tx_arr_dt += timedelta(days=1)
+        # 今日の便
+        for service_base in [today_base, tomorrow_base]:
+            tx_dep_dt = parse_time(tx_dep, service_base)
+            tx_arr_dt = parse_time(tx_arr, service_base)
 
-        candidates = []
+            if tx_arr_dt < tx_dep_dt:
+                tx_arr_dt += timedelta(days=1)
 
-        for oe in oedo_list:
-            oe_dep = oe["大江戸線新御徒町発"]
-            oe_arr = oe["都庁前着"]
+            candidates = []
 
-            if oe_arr is None:
-                continue
+            for oe in oedo_list:
+                oe_dep = oe["大江戸線新御徒町発"]
+                oe_arr = oe["都庁前着"]
 
-            oe_dep_dt = parse_time(oe_dep, base_dt)
-            oe_arr_dt = parse_time(oe_arr, base_dt)
-
-            if oe_arr_dt < oe_dep_dt:
-                oe_arr_dt += timedelta(days=1)
-
-            transfer = int((oe_dep_dt - tx_arr_dt).total_seconds() // 60)
-
-            if MIN_TRANSFER <= transfer <= MAX_WAIT:
-                total = int((oe_arr_dt - tx_dep_dt).total_seconds() // 60)
-
-                visible_until = oe_arr_dt + timedelta(minutes=POST_ARRIVAL_DISPLAY_MINUTES)
-                if visible_until < now_dt:
+                if oe_arr is None:
                     continue
 
-                status = status_map.get((tx_dep, oe_dep), {
-                    "tx_crowded": "",
-                    "oedo7_crowded": "",
-                    "oedo8_crowded": "",
-                })
+                oe_dep_dt = parse_time(oe_dep, service_base)
+                oe_arr_dt = parse_time(oe_arr, service_base)
 
-                candidates.append({
-                    "tx": tx_dep,
-                    "tx_arr": tx_arr,
-                    "大江戸線発": oe_dep,
-                    "都庁前着": oe_arr,
-                    "乗換": transfer,
-                    "総時間": total,
-                    "TX混雑": status["tx_crowded"],
-                    "大江戸線7号車混雑": status["oedo7_crowded"],
-                    "大江戸線8号車混雑": status["oedo8_crowded"],
-                    "oedo_dep_dt": oe_dep_dt,
-                    "oedo_arr_dt": oe_arr_dt,
-                    "form_id": f"form-{tx_dep.replace(':', '')}-{oe_dep.replace(':', '')}",
-                })
+                if oe_arr_dt < oe_dep_dt:
+                    oe_arr_dt += timedelta(days=1)
 
-        if not candidates:
+                transfer = int((oe_dep_dt - tx_arr_dt).total_seconds() // 60)
+
+                if MIN_TRANSFER <= transfer <= MAX_WAIT:
+                    total = int((oe_arr_dt - tx_dep_dt).total_seconds() // 60)
+
+                    visible_until = oe_arr_dt + timedelta(minutes=POST_ARRIVAL_DISPLAY_MINUTES)
+                    if visible_until < now_dt:
+                        continue
+
+                    status = status_map.get((tx_dep, oe_dep), {
+                        "tx_crowded": "",
+                        "oedo7_crowded": "",
+                        "oedo8_crowded": "",
+                    })
+
+                    candidates.append({
+                        "tx": tx_dep,
+                        "tx_arr": tx_arr,
+                        "大江戸線発": oe_dep,
+                        "都庁前着": oe_arr,
+                        "乗換": transfer,
+                        "総時間": total,
+                        "TX混雑": status["tx_crowded"],
+                        "大江戸線7号車混雑": status["oedo7_crowded"],
+                        "大江戸線8号車混雑": status["oedo8_crowded"],
+                        "oedo_dep_dt": oe_dep_dt,
+                        "oedo_arr_dt": oe_arr_dt,
+                        "form_id": f"form-{tx_dep.replace(':', '')}-{oe_dep.replace(':', '')}-{service_base.strftime('%Y%m%d')}",
+                    })
+
+            if not candidates:
+                continue
+
+            short = [c for c in candidates if c["乗換"] <= 2]
+            long = [c for c in candidates if c["乗換"] >= 3]
+
+            final = short.copy()
+            if long:
+                final.append(min(long, key=lambda x: x["oedo_dep_dt"]))
+
+            final.sort(key=lambda x: x["oedo_dep_dt"])
+
+            candidate_groups.append({
+                "tx_dep": tx_dep,
+                "tx_arr": tx_arr,
+                "tx_type": tx_type,
+                "tx_first": tx_first,
+                "tx_dep_dt": tx_dep_dt,
+                "tx_arr_dt": tx_arr_dt,
+                "routes": final,
+            })
+
+        # 今日と明日の両方候補があれば、より近い方を採用
+        if not candidate_groups:
             continue
 
-        short = [c for c in candidates if c["乗換"] <= 2]
-        long = [c for c in candidates if c["乗換"] >= 3]
+        candidate_groups.sort(key=lambda g: abs((g["tx_dep_dt"] - now_dt).total_seconds()))
+        selected = candidate_groups[0]
 
-        final = short.copy()
-        if long:
-            final.append(min(long, key=lambda x: x["oedo_dep_dt"]))
-
-        final.sort(key=lambda x: x["oedo_dep_dt"])
-
-        first_tocho_arr = final[0]["都庁前着"]
-        first_tocho_arr_dt = final[0]["oedo_arr_dt"]
+        first_tocho_arr = selected["routes"][0]["都庁前着"]
+        first_tocho_arr_dt = selected["routes"][0]["oedo_arr_dt"]
 
         groups.append({
-            "tx_dep": tx_dep,
-            "tx_arr": tx_arr,
+            "tx_dep": selected["tx_dep"],
+            "tx_arr": selected["tx_arr"],
             "first_tocho_arr": first_tocho_arr,
-            "tx_type": tx_type,
-            "tx_first": tx_first,
-            "minutes_left": int((tx_dep_dt - now_dt).total_seconds() // 60),
-            "routes": final,
-            "sort_dt": tx_arr_dt,
-            "focus_dt": tx_dep_dt,
-            "group_id": f"group-{tx_dep.replace(':', '')}",
+            "tx_type": selected["tx_type"],
+            "tx_first": selected["tx_first"],
+            "minutes_left": int((selected["tx_dep_dt"] - now_dt).total_seconds() // 60),
+            "routes": selected["routes"],
+            "sort_dt": selected["tx_arr_dt"],
+            "focus_dt": selected["tx_dep_dt"],
+            "group_id": f"group-{selected['tx_dep'].replace(':', '')}-{selected['tx_dep_dt'].strftime('%Y%m%d')}",
             "first_tocho_arr_dt": first_tocho_arr_dt,
         })
 
-    groups.sort(key=lambda x: x["sort_dt"])
+    groups.sort(key=lambda x: x["focus_dt"])
 
     # まだ出発していない一番近い列車を探す
     focused = False

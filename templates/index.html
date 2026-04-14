@@ -50,9 +50,9 @@ body {
 
 .floating-refresh {
     position: fixed;
-    top: 12px;
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
     right: 12px;
-    z-index: 1000;
+    z-index: 9999;
     border: 1px solid #d1d5db;
     background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(8px);
@@ -342,7 +342,7 @@ select {
 
 @media (max-width: 480px) {
     .floating-refresh {
-        top: 10px;
+        top: calc(env(safe-area-inset-top, 0px) + 8px);
         right: 10px;
         padding: 9px 12px;
         font-size: 12px;
