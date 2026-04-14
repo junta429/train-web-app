@@ -396,7 +396,7 @@ select {
                     <span class="badge badge-first">八潮始発</span>
                 {% endif %}
 
-                {% if g["minutes_left"] < 0 %}
+                {% if g["is_departed"] %}
                     <span class="badge badge-left left-past">出発済み</span>
                 {% elif g["minutes_left"] <= 5 %}
                     <span class="badge badge-left left-5">あと{{ g["minutes_left"] }}分</span>
@@ -542,10 +542,14 @@ function toggleForm(targetId, button) {
     }
 }
 
-/*
-5:03発をページ最上部に固定したいので、
-以前入っていた focus_group への自動スクロールは削除
-*/
+window.addEventListener('load', () => {
+    const focusGroup = document.querySelector('[data-focus="true"]');
+    if (focusGroup) {
+        setTimeout(() => {
+            focusGroup.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+    }
+});
 </script>
 
 </body>

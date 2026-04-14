@@ -115,12 +115,27 @@ def anchored_sort_key(text: str, anchor_text: str = TOP_ANCHOR_TIME) -> int:
     例:
     05:03 -> 0
     05:10 -> 7
-    23:00 -> ...
-    00:10 -> 翌日側として後ろ
+    00:10 -> 後ろ側
     """
     minutes = time_to_minutes(text)
     anchor = time_to_minutes(anchor_text)
     return (minutes - anchor) % (24 * 60)
+
+
+def get_display_status(tx_dep_text: str, now_dt: datetime):
+    """
+    表示上の『あと何分 / 出発済み』判定は、
+    05:03始まりの並び順に合わせる
+    """
+    now_text = now_dt.strftime("%H:%M")
+
+    train_key = anchored_sort_key(tx_dep_text, TOP_ANCHOR_TIME)
+    now_key = anchored_sort_key(now_text, TOP_ANCHOR_TIME)
+
+    if train_key < now_key:
+        return True, None
+
+    return False, train_key - now_key
 
 
 # =========================
@@ -231,7 +246,6 @@ def get_routes(now_dt: datetime):
 
         candidate_groups = []
 
-        # 今日の便 / 翌日の便候補を見る
         for service_base in [today_base, tomorrow_base]:
             tx_dep_dt = parse_time(tx_dep, service_base)
             tx_arr_dt = parse_time(tx_arr, service_base)
@@ -306,12 +320,13 @@ def get_routes(now_dt: datetime):
                 "routes": final,
             })
 
-        # 今日と明日の両方候補があれば、より近い方を採用
         if not candidate_groups:
             continue
 
         candidate_groups.sort(key=lambda g: abs((g["tx_dep_dt"] - now_dt).total_seconds()))
         selected = candidate_groups[0]
+
+        is_departed, display_minutes_left = get_display_status(selected["tx_dep"], now_dt)
 
         first_tocho_arr = selected["routes"][0]["都庁前着"]
         first_tocho_arr_dt = selected["routes"][0]["oedo_arr_dt"]
@@ -322,28 +337,28 @@ def get_routes(now_dt: datetime):
             "first_tocho_arr": first_tocho_arr,
             "tx_type": selected["tx_type"],
             "tx_first": selected["tx_first"],
-            "minutes_left": int((selected["tx_dep_dt"] - now_dt).total_seconds() // 60),
+            "minutes_left": display_minutes_left,
+            "is_departed": is_departed,
             "routes": selected["routes"],
-            "sort_dt": selected["tx_arr_dt"],
+            "sort_key": anchored_sort_key(selected["tx_dep"], TOP_ANCHOR_TIME),
             "focus_dt": selected["tx_dep_dt"],
             "group_id": f"group-{selected['tx_dep'].replace(':', '')}-{selected['tx_dep_dt'].strftime('%Y%m%d')}",
             "first_tocho_arr_dt": first_tocho_arr_dt,
         })
 
-    # 05:03発を常に先頭にした並びへ変更
-    groups.sort(key=lambda x: anchored_sort_key(x["tx_dep"], TOP_ANCHOR_TIME))
+    # 05:03発を常に先頭にした並び
+    groups.sort(key=lambda x: x["sort_key"])
 
-    # まだ出発していない一番近い列車を探す（枠線表示用だけ）
-    focused = False
-    for g in groups:
-        g["focus_group"] = False
-        if not focused and g["focus_dt"] >= now_dt:
-            g["focus_group"] = True
-            focused = True
+    # 開いた時に「現在時刻にいちばん近い」グループへ移動
+    if groups:
+        nearest = min(
+            groups,
+            key=lambda g: abs((g["focus_dt"] - now_dt).total_seconds())
+        )
+        nearest_group_id = nearest["group_id"]
 
-    # もう全部出発済みなら、並び順の先頭を対象に
-    if groups and not focused:
-        groups[0]["focus_group"] = True
+        for g in groups:
+            g["focus_group"] = (g["group_id"] == nearest_group_id)
 
     return groups
 
