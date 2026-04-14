@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 
-BASE_DIR = os.path.dirname(__file__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_FILE = os.path.join(BASE_DIR, "train_data.json")
 DB_FILE = os.path.join(BASE_DIR, "status.db")
 
@@ -15,10 +15,7 @@ MIN_TRANSFER = 1
 MAX_WAIT = 10
 JST = ZoneInfo("Asia/Tokyo")
 
-# 都庁前到着後もしばらく入力できるように残す時間
 POST_ARRIVAL_DISPLAY_MINUTES = 90
-
-# 一番上の基準にしたい発車時刻
 TOP_ANCHOR_TIME = "05:03"
 
 CROWD_OPTIONS = [
@@ -30,7 +27,6 @@ CROWD_OPTIONS = [
     "おしくらまんじゅう",
 ]
 
-# 濃い→薄い→薄い→濃い→薄い→濃い
 CROWD_STYLE_MAP = {
     "余裕で座れる": "crowd-blue-strong",
     "ギリギリ座れる": "crowd-blue-light",
@@ -41,9 +37,6 @@ CROWD_STYLE_MAP = {
 }
 
 
-# =========================
-# DB初期化 / 旧カラム移行
-# =========================
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -75,7 +68,6 @@ def init_db():
     if "updated_at" not in cols:
         c.execute("ALTER TABLE route_status ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''")
 
-    # 旧6号車列の値を7号車へ引き継ぐ
     if "oedo6_crowded" in cols:
         c.execute("""
         UPDATE route_status
@@ -89,16 +81,10 @@ def init_db():
     conn.close()
 
 
-# =========================
-# 現在時刻
-# =========================
 def now_jst() -> datetime:
     return datetime.now(JST)
 
 
-# =========================
-# 時刻処理
-# =========================
 def parse_time(text: str, base_dt: datetime) -> datetime:
     h, m = map(int, text.split(":"))
     return base_dt.replace(hour=h, minute=m, second=0, microsecond=0)
@@ -110,23 +96,12 @@ def time_to_minutes(text: str) -> int:
 
 
 def anchored_sort_key(text: str, anchor_text: str = TOP_ANCHOR_TIME) -> int:
-    """
-    05:03を先頭基準にして1日を並べるためのキー
-    例:
-    05:03 -> 0
-    05:10 -> 7
-    00:10 -> 後ろ側
-    """
     minutes = time_to_minutes(text)
     anchor = time_to_minutes(anchor_text)
     return (minutes - anchor) % (24 * 60)
 
 
 def get_display_status(tx_dep_text: str, now_dt: datetime):
-    """
-    表示上の『あと何分 / 出発済み』判定は、
-    05:03始まりの並び順に合わせる
-    """
     now_text = now_dt.strftime("%H:%M")
 
     train_key = anchored_sort_key(tx_dep_text, TOP_ANCHOR_TIME)
@@ -138,63 +113,33 @@ def get_display_status(tx_dep_text: str, now_dt: datetime):
     return False, train_key - now_key
 
 
-# =========================
-# JSON読み込み
-# =========================
 def load_data():
     with open(JSON_FILE, encoding="utf-8") as f:
         data = json.load(f)
     return data["tx_results"], data["oedo_results"]
 
 
-# =========================
-# 状態読み込み
-# =========================
 def load_status_map():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
 
-    c.execute("PRAGMA table_info(route_status)")
-    cols = [row[1] for row in c.fetchall()]
-
-    if "oedo7_crowded" in cols:
-        c.execute("""
-        SELECT tx_dep, oedo_dep, tx_crowded, oedo7_crowded, oedo8_crowded
-        FROM route_status
-        """)
-        rows = c.fetchall()
-        conn.close()
-
-        status_map = {}
-        for tx_dep, oedo_dep, tx_crowded, oedo7_crowded, oedo8_crowded in rows:
-            status_map[(tx_dep, oedo_dep)] = {
-                "tx_crowded": tx_crowded,
-                "oedo7_crowded": oedo7_crowded,
-                "oedo8_crowded": oedo8_crowded,
-            }
-        return status_map
-
-    # 旧構造でも落ちないようにする
     c.execute("""
-    SELECT tx_dep, oedo_dep, tx_crowded, oedo6_crowded, oedo8_crowded
+    SELECT tx_dep, oedo_dep, tx_crowded, oedo7_crowded, oedo8_crowded
     FROM route_status
     """)
     rows = c.fetchall()
     conn.close()
 
     status_map = {}
-    for tx_dep, oedo_dep, tx_crowded, oedo6_crowded, oedo8_crowded in rows:
+    for tx_dep, oedo_dep, tx_crowded, oedo7_crowded, oedo8_crowded in rows:
         status_map[(tx_dep, oedo_dep)] = {
             "tx_crowded": tx_crowded,
-            "oedo7_crowded": oedo6_crowded,
+            "oedo7_crowded": oedo7_crowded,
             "oedo8_crowded": oedo8_crowded,
         }
     return status_map
 
 
-# =========================
-# 状態保存
-# =========================
 def save_status(tx_dep, oedo_dep, tx_crowded, oedo7_crowded, oedo8_crowded):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -223,9 +168,6 @@ def save_status(tx_dep, oedo_dep, tx_crowded, oedo7_crowded, oedo8_crowded):
     conn.close()
 
 
-# =========================
-# ルート取得
-# =========================
 def get_routes(now_dt: datetime):
     tx_list, oedo_list = load_data()
     status_map = load_status_map()
@@ -346,10 +288,8 @@ def get_routes(now_dt: datetime):
             "first_tocho_arr_dt": first_tocho_arr_dt,
         })
 
-    # 05:03発を常に先頭にした並び
     groups.sort(key=lambda x: x["sort_key"])
 
-    # 開いた時に「現在時刻にいちばん近い」グループへ移動
     if groups:
         nearest = min(
             groups,
@@ -363,24 +303,27 @@ def get_routes(now_dt: datetime):
     return groups
 
 
-# =========================
-# 保存
-# =========================
 @app.route("/save", methods=["POST"])
 def save():
+    tx_dep = request.form.get("tx_dep", "")
+    oedo_dep = request.form.get("oedo_dep", "")
+    tx_crowded = request.form.get("tx_crowded", "")
+    oedo7_crowded = request.form.get("oedo7_crowded", "")
+    oedo8_crowded = request.form.get("oedo8_crowded", "")
+
+    if not tx_dep or not oedo_dep:
+        return "保存に必要なデータが不足しています", 400
+
     save_status(
-        request.form["tx_dep"],
-        request.form["oedo_dep"],
-        request.form["tx_crowded"],
-        request.form["oedo7_crowded"],
-        request.form["oedo8_crowded"],
+        tx_dep,
+        oedo_dep,
+        tx_crowded,
+        oedo7_crowded,
+        oedo8_crowded,
     )
     return redirect("/")
 
 
-# =========================
-# 表示
-# =========================
 @app.route("/")
 def index():
     now_dt = now_jst()
@@ -395,9 +338,8 @@ def index():
     )
 
 
-# =========================
-# 起動
-# =========================
+# Render / gunicorn でも起動時にDB初期化
+init_db()
+
 if __name__ == "__main__":
-    init_db()
     app.run(host="127.0.0.1", port=8000, debug=True, use_reloader=False)
